@@ -1,0 +1,10 @@
+# Compiled Java
+*.class
+
+# Build folders
+bin/
+out/
+
+# IDE folders
+.vscode/
+.idea/
