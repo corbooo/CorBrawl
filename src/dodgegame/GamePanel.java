@@ -29,12 +29,22 @@ public class GamePanel extends JPanel{
     private int aimScreenX = WIDTH / 2;
     private int aimScreenY = HEIGHT / 2;
 
-    //Spike generation
+    //Hazard generation
     private final List<Spike> spikes = new ArrayList<>();
+    private final List<Enemy> enemies = new ArrayList<>();
+
     private final Random rng = new Random();
 
     private final int spikeSize = 40;
     private final int targetSpikes = 60;
+    private final int enemySize = 20;
+    private final int enemyHp = 3;
+
+    private final int baseEnemyCap = 20;
+    private final int maxEnemyCap = 60;
+    private final int secondsPerCapIncrease = 10; // +1 enemy every 10s
+
+    private long gameStartMs = System.currentTimeMillis();
 
     private final double rangeX = WIDTH * 2.5;
     private final double rangeY = HEIGHT * 2.5;
@@ -71,7 +81,7 @@ public class GamePanel extends JPanel{
         });
 
         while (spikes.size() < targetSpikes) {
-            addRandomSpikeNEarPLayer();
+            addRandomSpikeNearPLayer();
         }
 
         addMouseListener(new MouseAdapter() {
@@ -95,7 +105,7 @@ public class GamePanel extends JPanel{
         return new Rectangle(left, top, playerSize, playerSize);
     }
 
-    private void addRandomSpikeNEarPLayer() {
+    private void addRandomSpikeNearPLayer() {
         while (true) {
             int x = (int) (px + (rng.nextDouble() * 2 -1) * rangeX);
             int y = (int) (py + (rng.nextDouble() * 2 -1) * rangeY);
@@ -118,13 +128,45 @@ public class GamePanel extends JPanel{
 
         // Add until back to 60 spikes
         while (spikes.size() < targetSpikes) {
-            addRandomSpikeNEarPLayer();
+            addRandomSpikeNearPLayer();
+        }
+    }
+    private void addRandomEnemyNearPLayer() {
+        while (true) {
+            int x = (int) (px + (rng.nextDouble() * 2 -1) * rangeX);
+            int y = (int) (py + (rng.nextDouble() * 2 -1) * rangeY);
+
+            double dx = x - px;
+            double dy = y - py;
+
+            if (dx * dx + dy * dy < safeRadius * safeRadius) continue; // too close to player
+            if (isInsideView(x, y)) continue; // inside current viewing window
+
+            enemies.add(new Enemy(x, y, enemyHp, enemySize));
+            return;
+        }
+    }
+    private void maintainEnemies() {
+        enemies.removeIf(e ->
+            Math.abs(e.x - px) > rangeX || Math.abs(e.y - py) > rangeY
+        );
+        int cap = currentEnemyCap();
+        while (enemies.size() < cap) {
+            addRandomEnemyNearPLayer();
         }
     }
 
     private boolean isInsideView(double x, double y) {
         return x >= camX && x <= camX + WIDTH &&
             y >= camY && y <= camY + HEIGHT;
+    }
+
+    private int currentEnemyCap() {
+        long elapsedMs = System.currentTimeMillis() - gameStartMs;
+        long elapsedSeconds = elapsedMs / 1000;
+
+        int cap = baseEnemyCap + (int)(elapsedSeconds / secondsPerCapIncrease);
+        return Math.min(cap, maxEnemyCap);
     }
 
     private void updateGame() {
@@ -142,6 +184,7 @@ public class GamePanel extends JPanel{
         camY = py - (HEIGHT / 2.0);
 
         maintainSpikes();
+        maintainEnemies();
 
         if (alive) {
             var playerHitbox = getPlayerHitbox();
@@ -160,17 +203,24 @@ public class GamePanel extends JPanel{
         py = 0;
         aimScreenX = WIDTH / 2;
         aimScreenY = HEIGHT / 2;
+        gameStartMs = System.currentTimeMillis();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        g.setColor(Color.RED);
+        g.setColor(Color.BLACK);
         for (Spike s : spikes) {
             int sx = (int) (s.x - camX);
             int sy = (int) (s.y - camY);
             g.fillRect(sx, sy, s.size, s.size);
+        }
+        g.setColor(Color.RED);
+        for (Enemy e : enemies) {
+            int ex = (int) (e.x - camX);
+            int ey = (int) (e.y - camY);
+            g.fillRect(ex, ey, e.size, e.size);
         }
         
         // Draw player ALWAYS at center of screen
@@ -185,8 +235,10 @@ public class GamePanel extends JPanel{
         g.setColor(Color.BLACK);
         g.drawLine(WIDTH / 2, HEIGHT / 2, aimScreenX, aimScreenY);
         
-        // Debug text: show world position
+        // Debug text
         g.drawString("Player world: (" + (int)px + ", " + (int)py + ")", 10, 20);
+        g.drawString("Enemy cap: " + currentEnemyCap(), 10, 40);
+
 
         if (!alive) {
             g.setColor(Color.BLACK);

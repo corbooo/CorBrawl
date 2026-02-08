@@ -6,7 +6,6 @@ public class GameFrame extends JFrame {
     
     public GameFrame() {
         setTitle("Corbin's Little Dodge Game");
-        setSize(WIDTH, HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         setLocationRelativeTo(null);
