@@ -1,4 +1,4 @@
-package src.dodgegame;
+package src.CorBrawl;
 
 import java.awt.Rectangle;
 

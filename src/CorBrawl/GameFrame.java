@@ -1,11 +1,11 @@
-package src.dodgegame;
+package src.CorBrawl;
 
 import javax.swing.JFrame;
 
 public class GameFrame extends JFrame {
     
     public GameFrame() {
-        setTitle("Corbin's Little Dodge Game");
+        setTitle("CorBrawl");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         setLocationRelativeTo(null);

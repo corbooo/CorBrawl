@@ -1,4 +1,4 @@
-package src.dodgegame;
+package src.CorBrawl;
 
 import javax.swing.*;
 import java.awt.*;
