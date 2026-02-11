@@ -32,6 +32,7 @@ public class GamePanel extends JPanel{
     //Hazard generation
     private final List<Spike> spikes = new ArrayList<>();
     private final List<Enemy> enemies = new ArrayList<>();
+    private final List<Bullet> bullets = new ArrayList<>();
 
     private final Random rng = new Random();
 
@@ -39,6 +40,7 @@ public class GamePanel extends JPanel{
     private final int targetSpikes = 60;
     private final int enemySize = 20;
     private final int enemyHp = 3;
+    private final int bulletSize = 10;
 
     private final int baseEnemyCap = 20;
     private final int maxEnemyCap = 60;
@@ -56,7 +58,7 @@ public class GamePanel extends JPanel{
         setBackground(Color.LIGHT_GRAY);
         setOpaque(true);
         setFocusable(true);
-
+        
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -89,6 +91,8 @@ public class GamePanel extends JPanel{
             public void mousePressed(MouseEvent e) {
                 aimScreenX = e.getX();
                 aimScreenY = e.getY();
+
+                fireBullet(aimScreenX, aimScreenY);
             }
         });
 
@@ -107,8 +111,8 @@ public class GamePanel extends JPanel{
 
     private void addRandomSpikeNearPLayer() {
         while (true) {
-            int x = (int) (px + (rng.nextDouble() * 2 -1) * rangeX);
-            int y = (int) (py + (rng.nextDouble() * 2 -1) * rangeY);
+            int x = (int) (px + (rng.nextDouble() * 2 - 1) * rangeX);
+            int y = (int) (py + (rng.nextDouble() * 2 - 1) * rangeY);
 
             double dx = x - px;
             double dy = y - py;
@@ -154,6 +158,15 @@ public class GamePanel extends JPanel{
         while (enemies.size() < cap) {
             addRandomEnemyNearPLayer();
         }
+    }
+    private void fireBullet(int aimScreenX, int aimScreenY) {
+        int x = (int) camX + aimScreenX;
+        int y = (int) camY + aimScreenY;
+
+        bullets.add(new Bullet(x, y, bulletSize));
+    }
+    private void maintainBullets() {
+        
     }
 
     private boolean isInsideView(double x, double y) {
@@ -222,6 +235,12 @@ public class GamePanel extends JPanel{
             int ey = (int) (e.y - camY);
             g.fillRect(ex, ey, e.size, e.size);
         }
+        g.setColor(Color.WHITE);
+        for (Bullet b : bullets) {
+            int bx = (int) (b.x - camX) - bulletSize/2;
+            int by = (int) (b.y - camY) - bulletSize/2;
+            g.fillRect(bx, by, b.size, b.size);
+        }
         
         // Draw player ALWAYS at center of screen
         int playerSize = 30;
@@ -230,12 +249,9 @@ public class GamePanel extends JPanel{
         
         g.setColor(Color.BLUE);
         g.fillRect(playerScreenX, playerScreenY, playerSize, playerSize);
-        
-        // Draw "aim line" from player center to last click (for future shooting)
-        g.setColor(Color.BLACK);
-        g.drawLine(WIDTH / 2, HEIGHT / 2, aimScreenX, aimScreenY);
-        
+
         // Debug text
+        g.setColor(Color.BLACK);
         g.drawString("Player world: (" + (int)px + ", " + (int)py + ")", 10, 20);
         g.drawString("Enemy cap: " + currentEnemyCap(), 10, 40);
 
