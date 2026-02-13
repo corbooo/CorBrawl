@@ -13,7 +13,9 @@ public class GamePanel extends JPanel{
     public static final int HEIGHT = 768;
 
     private boolean alive = true;
+    private int score = 0;
     private final int playerSize = 30;
+    private double playerSpeed = 3.0;
     
     //Player world position (double = smooth movement)
     private double px = 0;
@@ -24,10 +26,6 @@ public class GamePanel extends JPanel{
 
     //Camera world position (top-left of screen in world coords)
     private double camX, camY;
-
-    //Where the user last clicked (screen coords)
-    private int aimScreenX = WIDTH / 2;
-    private int aimScreenY = HEIGHT / 2;
 
     //Hazard generation
     private final List<Spike> spikes = new ArrayList<>();
@@ -47,6 +45,8 @@ public class GamePanel extends JPanel{
     private final int secondsPerCapIncrease = 10; // +1 enemy every 10s
 
     private long gameStartMs = System.currentTimeMillis();
+    private long lastShotNanos = 0L;
+    private static final long SHOT_COOLDOWN_NANOS = 400_000_000L; // 400ms
 
     private final double rangeX = WIDTH * 2.5;
     private final double rangeY = HEIGHT * 2.5;
@@ -89,10 +89,9 @@ public class GamePanel extends JPanel{
         addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                aimScreenX = e.getX();
-                aimScreenY = e.getY();
-
-                fireBullet(aimScreenX, aimScreenY);
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    tryShoot(e.getX(), e.getY());
+                }
             }
         });
 
@@ -101,6 +100,14 @@ public class GamePanel extends JPanel{
             updateGame();
             repaint();
         }).start();
+    }
+
+    private void tryShoot(int aimScreenX, int aimScreenY) {
+        long now = System.nanoTime();
+        if (now - lastShotNanos < SHOT_COOLDOWN_NANOS) return;
+
+        lastShotNanos = now;
+        fireBullet(aimScreenX, aimScreenY);
     }
 
     private Rectangle getPlayerHitbox() {
@@ -125,12 +132,9 @@ public class GamePanel extends JPanel{
         }
     }
     private void maintainSpikes() {
-        // Remove spikes too far away
         spikes.removeIf(s ->
             Math.abs(s.x - px) > rangeX || Math.abs(s.y - py) > rangeY
         );
-
-        // Add until back to 60 spikes
         while (spikes.size() < targetSpikes) {
             addRandomSpikeNearPlayer();
         }
@@ -160,7 +164,7 @@ public class GamePanel extends JPanel{
         }
     }
     private void fireBullet(int aimScreenX, int aimScreenY) {
-        Bullet bullet = new Bullet((int) px, (int) py, bulletSize);
+        Bullet bullet = new Bullet((int) px, (int) py, bulletSize, true);
         bullet.setVelocity(aimScreenX, aimScreenY);
         bullets.add(bullet);
     }
@@ -168,6 +172,45 @@ public class GamePanel extends JPanel{
         bullets.removeIf(b ->
             Math.abs(b.x - px) > rangeX || Math.abs(b.y - py) > rangeY
         );
+    }
+    private void bulletCollisions() {
+        Rectangle playerHitbox = getPlayerHitbox();
+        for (var bIt = bullets.iterator(); bIt.hasNext();) {
+            Bullet b = bIt.next();
+            Rectangle bBox = b.getHitbox();
+
+            // Player bullet -> Enemy
+            if (b.fromPlayer) {
+                boolean hitSomething = false;
+                for (var eIt = enemies.iterator(); eIt.hasNext();) {
+                    Enemy e = eIt.next();
+                    if (bBox.intersects(e.getHitbox())) {
+                        eIt.remove();
+                        bIt.remove();
+                        score += 50;
+                        hitSomething = true;
+                        break;
+                    }
+                }
+                for (var sIt = spikes.iterator(); sIt.hasNext();) {
+                    Spike s = sIt.next();
+                    if (bBox.intersects(s.getHitBox())) {
+                        bIt.remove();
+                        hitSomething = true;
+                        break;
+                    }
+                }
+                if (hitSomething) continue;
+            }
+            // Enemy bullet -> Player
+            else {
+                if (bBox.intersects(playerHitbox)) {
+                    bIt.remove();
+                    alive = false;
+                    return;
+                }
+            }
+        }
     }
 
     private boolean isInsideView(double x, double y) {
@@ -186,14 +229,11 @@ public class GamePanel extends JPanel{
     private void updateGame() {
         if (!alive) return;
 
-        // Move player in WORLD coordinates
-        double speed = 4.0;
-        if (up) py -= speed;
-        if (down) py += speed;
-        if (left) px -= speed;
-        if (right) px += speed;
+        if (up) py -= playerSpeed;
+        if (down) py += playerSpeed;
+        if (left) px -= playerSpeed;
+        if (right) px += playerSpeed;
 
-        // Camera follows player: player stays centered
         camX = px - (WIDTH / 2.0);
         camY = py - (HEIGHT / 2.0);
 
@@ -201,29 +241,26 @@ public class GamePanel extends JPanel{
         maintainEnemies();
         maintainBullets();
 
-        // Check collisions
         if (alive) {
             var playerHitbox = getPlayerHitbox();
             for (Spike s : spikes) {
-                if (playerHitbox.intersects((s.getHitBox()))) {
+                if (playerHitbox.intersects(s.getHitBox())) {
                     alive = false;
                     break;
                 }
             }
         }
-
         for (Bullet b : bullets) {
-            b.x += b.vx;
-            b.y += b.vy;
+            b.update();
         }
+        bulletCollisions();
     }
 
     private void resetGame() {
         alive = true;
+        score = 0;
         px = 0;
         py = 0;
-        aimScreenX = WIDTH / 2;
-        aimScreenY = HEIGHT / 2;
         enemies.clear();
         spikes.clear();
         bullets.clear();
@@ -253,22 +290,16 @@ public class GamePanel extends JPanel{
             g.fillRect(bx, by, b.size, b.size);
         }
         
-        // Draw player ALWAYS at center of screen
         int playerScreenX = WIDTH / 2 - playerSize / 2;
         int playerScreenY = HEIGHT / 2 - playerSize / 2;
-        
         g.setColor(Color.BLUE);
         g.fillRect(playerScreenX, playerScreenY, playerSize, playerSize);
 
         // Debug text
         g.setColor(Color.BLACK);
-        g.drawString("Player world: (" + (int)px + ", " + (int)py + ")", 10, 20);
-        g.drawString("Enemy cap: " + currentEnemyCap(), 10, 40);
-        g.drawString("CamX: " + camX, 10, 60);
-        g.drawString("CamY: " + camY, 10, 80);
-        g.drawString("AimScreenX: " + aimScreenX, 10, 100);
-        g.drawString("AimScreenY: " + aimScreenY, 10, 120);
-
+        g.drawString("Score: " + score, 10, 20);
+        g.drawString("Player world: (" + (int)px + ", " + (int)py + ")", 10, 40);
+        g.drawString("Enemy cap: " + currentEnemyCap(), 10, 60);
 
         if (!alive) {
             g.setColor(Color.BLACK);

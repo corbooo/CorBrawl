@@ -8,13 +8,15 @@ public class Bullet {
     public double vx;
     public double vy;
     public int size;
+    public boolean fromPlayer;
 
     private final double speed = 12.0; //Speed of the bullet
 
-    public Bullet(int x, int y, int size) {
+    public Bullet(int x, int y, int size, boolean fromPlayer) {
         this.x = x;
         this.y = y;
         this.size = size;
+        this.fromPlayer = fromPlayer;
     }
 
     public void setVelocity(int aimScreenX, int aimScreenY) {
@@ -29,8 +31,15 @@ public class Bullet {
         vy = (dy / length) * speed;
     }
 
+    public void update() {
+        x += vx;
+        y += vy;
+    }
+
     public Rectangle getHitbox() {
-        return new Rectangle((int) x, (int) y, size, size);
+        int left = (int) (x - size / 2.0);
+        int top = (int) (y - size / 2.0);
+        return new Rectangle(left, top, size, size);
     }
 
 }

@@ -15,6 +15,8 @@ public class Enemy {
     }
 
     public Rectangle getHitbox() {
-        return new Rectangle(x, y, size, size);
+        int left = (int) (x - size / 2.0);
+        int top = (int) (y - size / 2.0);
+        return new Rectangle(left, top, size, size);
     }
 }
