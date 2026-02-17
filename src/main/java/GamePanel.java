@@ -6,6 +6,7 @@ import javax.imageio.ImageIO;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.io.File;
 
 public class GamePanel extends JPanel{
 
@@ -20,7 +21,7 @@ public class GamePanel extends JPanel{
     //Import images
     private BufferedImage playerImage;
     private BufferedImage enemyImage;
-    private BufferedImage spikImage;
+    private BufferedImage spikeImage;
     private BufferedImage bulletImage;
     
     //Player world position (double = smooth movement)
@@ -66,11 +67,14 @@ public class GamePanel extends JPanel{
         setFocusable(true);
 
         try {
-            System.out.println(getClass().getResource("/player.png"));
-            playerImage = ImageIO.read(getClass().getResource("/player.png"));
+            playerImage = ImageIO.read(new File("src/main/resources/player.png"));
+            spikeImage = ImageIO.read(new File("src/main/resources/spike.png"));
+            enemyImage = ImageIO.read(new File("src/main/resources/enemy.png"));
+            bulletImage = ImageIO.read(new File("src/main/resources/bullet.png"));
         } catch (Exception e) {
             e.printStackTrace();
         }
+
 
         addKeyListener(new KeyAdapter() {
             @Override
@@ -284,23 +288,20 @@ public class GamePanel extends JPanel{
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         
-        g.setColor(Color.BLACK);
         for (Spike s : spikes) {
             int sx = (int) (s.x - camX) - s.size / 2;
             int sy = (int) (s.y - camY) - s.size / 2;
-            g.fillRect(sx, sy, s.size, s.size);
+            g.drawImage(spikeImage, sx, sy, s.size, s.size, null);
         }
-        g.setColor(Color.RED);
         for (Enemy e : enemies) {
             int ex = (int) (e.x - camX) - e.size / 2;
             int ey = (int) (e.y - camY) - e.size / 2;
-            g.fillRect(ex, ey, e.size, e.size);
+            g.drawImage(enemyImage, ex, ey, e.size, e.size, null);
         }
-        g.setColor(Color.WHITE);
         for (Bullet b : bullets) {
             int bx = (int) (b.x - camX) - bulletSize/2;
             int by = (int) (b.y - camY) - bulletSize/2;
-            g.fillRect(bx, by, b.size, b.size);
+            g.drawImage(bulletImage, bx, by, b.size, b.size, null);
         }
         
         int playerScreenX = WIDTH / 2 - playerSize / 2;
