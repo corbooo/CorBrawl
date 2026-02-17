@@ -1,6 +1,8 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -14,6 +16,12 @@ public class GamePanel extends JPanel{
     private int score = 0;
     private final int playerSize = 32;
     private double playerSpeed = 3.0;
+
+    //Import images
+    private BufferedImage playerImage;
+    private BufferedImage enemyImage;
+    private BufferedImage spikImage;
+    private BufferedImage bulletImage;
     
     //Player world position (double = smooth movement)
     private double px = 0;
@@ -56,7 +64,14 @@ public class GamePanel extends JPanel{
         setBackground(Color.LIGHT_GRAY);
         setOpaque(true);
         setFocusable(true);
-        
+
+        try {
+            System.out.println(getClass().getResource("/player.png"));
+            playerImage = ImageIO.read(getClass().getResource("/player.png"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -290,8 +305,7 @@ public class GamePanel extends JPanel{
         
         int playerScreenX = WIDTH / 2 - playerSize / 2;
         int playerScreenY = HEIGHT / 2 - playerSize / 2;
-        g.setColor(Color.BLUE);
-        g.fillRect(playerScreenX, playerScreenY, playerSize, playerSize);
+        g.drawImage(playerImage, playerScreenX, playerScreenY, playerSize, playerSize, null);
 
         // Debug text
         g.setColor(Color.BLACK);
