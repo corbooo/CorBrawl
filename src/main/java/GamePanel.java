@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import java.util.ArrayList;
@@ -17,6 +18,9 @@ public class GamePanel extends JPanel{
     private int score = 0;
     private final int playerSize = 32;
     private double playerSpeed = 3.0;
+
+    private int mouseX = WIDTH / 2;
+    private int mouseY = HEIGHT / 2;
 
     //Import images
     private BufferedImage playerImage;
@@ -45,7 +49,7 @@ public class GamePanel extends JPanel{
 
     private final int spikeSize = 32;
     private final int targetSpikes = 100;
-    private final int enemySize = 50;
+    private final int enemySize = 32;
     private final int enemyHp = 3;
     private final int bulletSize = 8;
 
@@ -90,7 +94,6 @@ public class GamePanel extends JPanel{
                     case KeyEvent.VK_R -> { if (!alive) resetGame(); }
                 }
             }
-
             @Override
             public void keyReleased(KeyEvent e) {
                 switch (e.getKeyCode()) {
@@ -112,6 +115,18 @@ public class GamePanel extends JPanel{
                 if (SwingUtilities.isLeftMouseButton(e)) {
                     tryShoot(e.getX(), e.getY());
                 }
+            }
+        });
+
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                mouseX = e.getX();
+                mouseY = e.getY();
+            }
+            public void mouseDragged(MouseEvent e) {
+                mouseX = e.getX();
+                mouseY = e.getY();
             }
         });
 
@@ -292,25 +307,25 @@ public class GamePanel extends JPanel{
         super.paintComponent(g);
 
         // Drawing the grass
-        int tileSize = 32;
-        int startTileX = (int) Math.floor(camX / tileSize);
-        int startTileY = (int) Math.floor(camY / tileSize);
-        int tilesAcross = WIDTH / tileSize;
-        int tilesDown = HEIGHT / tileSize + 8;
+        int grassSize = 16;
+        int startTileX = (int) Math.floor(camX / grassSize);
+        int startTileY = (int) Math.floor(camY / grassSize);
+        int tilesAcross = WIDTH / grassSize;
+        int tilesDown = HEIGHT / grassSize + 16;
         for (int i = 0; i < tilesDown; ++i) {
             for (int j = 0; j < tilesAcross; ++j) {
                 int tx = (startTileX + i), ty = (startTileY + j);
-                int worldX = (tx * tileSize), worldY = (ty * tileSize);
+                int worldX = (tx * grassSize), worldY = (ty * grassSize);
                 int screenX = worldX - (int) camX;
                 int screenY = worldY - (int) camY;
                 int hash = (tx * 73856093) ^ (ty * 19349663);
                 int chance = Math.floorMod(hash, 100);
-                int density = 5;
+                int density = 7;
                 if (chance < density) {
                     if (hash % 2 == 0)
-                        g.drawImage(grass1Image, screenX, screenY, tileSize, tileSize, null);
+                        g.drawImage(grass1Image, screenX, screenY, grassSize, grassSize, null);
                     else
-                        g.drawImage(grass2Image, screenX, screenY, tileSize, tileSize, null);
+                        g.drawImage(grass2Image, screenX, screenY, grassSize, grassSize, null);
                 } 
             }
         }
@@ -331,19 +346,31 @@ public class GamePanel extends JPanel{
             g.drawImage(bulletImage, bx, by, b.size, b.size, null);
         }
         
-        int playerScreenX = WIDTH / 2 - playerSize / 2;
-        int playerScreenY = HEIGHT / 2 - playerSize / 2;
-        g.drawImage(playerImage, playerScreenX, playerScreenY, playerSize, playerSize, null);
+        //Draw player aiming at mouse
+        int centerX = WIDTH / 2;
+        int centerY = HEIGHT / 2;
+        int dx = mouseX - centerX;
+        int dy = mouseY - centerY;
+        double angle = Math.atan2(dy, dx);
+        angle += Math.PI / 2;
+
+        Graphics2D g2 = (Graphics2D) g;
+        AffineTransform old = g2.getTransform();
+        g2.rotate(angle, centerX, centerY);
+        g2.drawImage(playerImage, (centerX-playerSize/2), (centerY-playerSize/2), playerSize, playerSize, null);
+        g2.setTransform(old);
 
         // Debug text
         g.setColor(Color.BLACK);
         g.drawString("Score: " + score, 10, 20);
         g.drawString("Player world: (" + (int)px + ", " + (int)py + ")", 10, 40);
         g.drawString("Enemy cap: " + currentEnemyCap(), 10, 60);
+        g.drawString("Mouse: " + mouseX + ", " + mouseY, 10, 80);
 
         if (!alive) {
             g.setColor(Color.BLACK);
             g.drawString("GAME OVER", WIDTH / 2 - 40, HEIGHT / 2 - 50);
         }
+
     }
 }
