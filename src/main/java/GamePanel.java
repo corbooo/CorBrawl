@@ -23,6 +23,8 @@ public class GamePanel extends JPanel{
     private BufferedImage enemyImage;
     private BufferedImage spikeImage;
     private BufferedImage bulletImage;
+    private BufferedImage grass1Image;
+    private BufferedImage grass2Image;
     
     //Player world position (double = smooth movement)
     private double px = 0;
@@ -43,7 +45,7 @@ public class GamePanel extends JPanel{
 
     private final int spikeSize = 32;
     private final int targetSpikes = 100;
-    private final int enemySize = 32;
+    private final int enemySize = 50;
     private final int enemyHp = 3;
     private final int bulletSize = 8;
 
@@ -62,7 +64,7 @@ public class GamePanel extends JPanel{
 
     public GamePanel() {
         setPreferredSize(new Dimension(WIDTH,HEIGHT));
-        setBackground(Color.LIGHT_GRAY);
+        setBackground(new Color(117, 224, 85));
         setOpaque(true);
         setFocusable(true);
 
@@ -71,10 +73,11 @@ public class GamePanel extends JPanel{
             spikeImage = ImageIO.read(new File("src/main/resources/spike.png"));
             enemyImage = ImageIO.read(new File("src/main/resources/enemy.png"));
             bulletImage = ImageIO.read(new File("src/main/resources/bullet.png"));
+            grass1Image = ImageIO.read(new File("src/main/resources/grass1.png"));
+            grass2Image = ImageIO.read(new File("src/main/resources/grass2.png"));
         } catch (Exception e) {
             e.printStackTrace();
         }
-
 
         addKeyListener(new KeyAdapter() {
             @Override
@@ -287,7 +290,31 @@ public class GamePanel extends JPanel{
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        
+
+        // Drawing the grass
+        int tileSize = 32;
+        int startTileX = (int) Math.floor(camX / tileSize);
+        int startTileY = (int) Math.floor(camY / tileSize);
+        int tilesAcross = WIDTH / tileSize;
+        int tilesDown = HEIGHT / tileSize + 8;
+        for (int i = 0; i < tilesDown; ++i) {
+            for (int j = 0; j < tilesAcross; ++j) {
+                int tx = (startTileX + i), ty = (startTileY + j);
+                int worldX = (tx * tileSize), worldY = (ty * tileSize);
+                int screenX = worldX - (int) camX;
+                int screenY = worldY - (int) camY;
+                int hash = (tx * 73856093) ^ (ty * 19349663);
+                int chance = Math.floorMod(hash, 100);
+                int density = 5;
+                if (chance < density) {
+                    if (hash % 2 == 0)
+                        g.drawImage(grass1Image, screenX, screenY, tileSize, tileSize, null);
+                    else
+                        g.drawImage(grass2Image, screenX, screenY, tileSize, tileSize, null);
+                } 
+            }
+        }
+
         for (Spike s : spikes) {
             int sx = (int) (s.x - camX) - s.size / 2;
             int sy = (int) (s.y - camY) - s.size / 2;
